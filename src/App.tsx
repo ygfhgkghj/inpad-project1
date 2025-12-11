@@ -11,12 +11,12 @@ interface User {
 }
 
 interface LoginResponse {
-  acces_token: string;
+  access_token: string;
   user?: User;
 }
 
 interface RegisterResponse {
-  acces_token: string;
+  access_token: string;
   user?: User;
 }
 
@@ -34,17 +34,17 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleAuthSuccess = (user: User | undefined, accesToken: string) => {
+  const handleAuthSuccess = (user: User | undefined, accessToken: string) => {
     if (user) {
       localStorage.setItem('user', JSON.stringify(user));
       setCurrentUser(user);
     }
-    localStorage.setItem('acces_token', accesToken);
+    localStorage.setItem('access_token', accessToken);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('user');
-    localStorage.removeItem('acces_token');
+    localStorage.removeItem('access_token');
     setCurrentUser(null);
   };
 
@@ -95,7 +95,7 @@ const App: React.FC = () => {
 // логин
 
 interface LoginPageProps {
-  onAuth: (user: User | undefined, accesToken: string) => void;
+  onAuth: (user: User | undefined, accessToken: string) => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
@@ -143,11 +143,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
       }
 
       const data: LoginResponse = await response.json();
-      if (!data.acces_token) {
-        throw new Error('Не получен acces_token');
+      if (!data.access_token) {
+        throw new Error('Не получен access_token');
       }
 
-      onAuth(data.user, data.acces_token);
+      onAuth(data.user, data.access_token);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Ошибка сети');
@@ -235,7 +235,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
 // регистрация
 
 interface RegisterPageProps {
-  onAuth: (user: User | undefined, accesToken: string) => void;
+  onAuth: (user: User | undefined, accessToken: string) => void;
 }
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
@@ -288,11 +288,11 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
       }
 
       const data: RegisterResponse = await response.json();
-      if (!data.acces_token) {
+      if (!data.access_token) {
         throw new Error('Не получен acces_token');
       }
 
-      onAuth(data.user, data.acces_token);
+      onAuth(data.user, data.access_token);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Ошибка сети');
@@ -370,7 +370,7 @@ interface DashboardProps {
 }
 
 const DashboardPage: React.FC<DashboardProps> = ({ user, onLogout }) => {
-  const token = localStorage.getItem('acces_token');
+  const token = localStorage.getItem('access_token');
 
   return (
     <div style={{ maxWidth: 960, margin: '40px auto', padding: '0 16px' }}>
@@ -438,7 +438,7 @@ const DashboardPage: React.FC<DashboardProps> = ({ user, onLogout }) => {
       >
         <h2>Токен</h2>
         <p>
-          <strong>acces_token:</strong>{' '}
+          <strong>access_token:</strong>{' '}
           {token ? token : 'Токен не найден в localStorage'}
         </p>
       </section>

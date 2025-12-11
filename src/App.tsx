@@ -242,7 +242,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
   );
 };
 
-// ===== Регистрация (c firstName) =====
+// ===== Регистрация  =====
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
   const [orgName, setOrgName] = useState('');

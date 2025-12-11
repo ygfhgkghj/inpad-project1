@@ -1,23 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 
 interface User {
   id: string;
   email?: string;
   phone?: string;
-  name?: string;
+  orgName?: string;
+  firstName?: string;
+  lastName?: string;
   inn?: number;
   ogrn?: number;
 }
 
-interface LoginResponse {
+interface AuthResponse {
   access_token: string;
   user?: User;
 }
 
-interface RegisterResponse {
-  access_token: string;
-  user?: User;
+interface LoginPageProps {
+  onAuth: (user: User | undefined, accessToken: string) => void;
+}
+
+interface RegisterPageProps {
+  onAuth: (user: User | undefined, accessToken: string) => void;
+}
+
+interface DashboardProps {
+  user: User;
+  onLogout: () => void;
 }
 
 const App: React.FC = () => {
@@ -34,19 +44,19 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleAuthSuccess = (user: User | undefined, accessToken: string) => {
+  const handleAuthSuccess = useCallback((user: User | undefined, accessToken: string) => {
     if (user) {
       localStorage.setItem('user', JSON.stringify(user));
       setCurrentUser(user);
     }
     localStorage.setItem('access_token', accessToken);
-  };
+  }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('user');
     localStorage.removeItem('access_token');
     setCurrentUser(null);
-  };
+  }, []);
 
   return (
     <BrowserRouter>
@@ -92,11 +102,7 @@ const App: React.FC = () => {
   );
 };
 
-// логин
-
-interface LoginPageProps {
-  onAuth: (user: User | undefined, accessToken: string) => void;
-}
+// ===== Логин =====
 
 const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
   const [useEmail, setUseEmail] = useState(true);
@@ -123,6 +129,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
       setError('Введите пароль');
       return;
     }
+    if (!useEmail && phone && !/^\+?\d{10,15}$/.test(phone.replace(/\D/g, ''))) {
+      setError('Неверный формат телефона');
+      return;
+    }
 
     const body: any = { password };
     if (useEmail) body.email = email;
@@ -142,7 +152,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
         throw new Error(err?.message || 'Ошибка входа');
       }
 
-      const data: LoginResponse = await response.json();
+      const data: AuthResponse = await response.json();
       if (!data.access_token) {
         throw new Error('Не получен access_token');
       }
@@ -198,7 +208,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
         ) : (
           <input
             type="tel"
-            placeholder="Телефон"
+            placeholder="номер телефона"
             style={inputStyle}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -232,17 +242,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
   );
 };
 
-// регистрация
-
-interface RegisterPageProps {
-  onAuth: (user: User | undefined, accessToken: string) => void;
-}
+// ===== Регистрация (c firstName) =====
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [orgName, setOrgName] = useState('');
   const [inn, setInn] = useState('');
   const [ogrn, setOgrn] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -252,7 +261,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
     e.preventDefault();
     setError('');
 
-    if (!name || !email || !inn || !ogrn || !password) {
+    if (!orgName || !inn || !ogrn || !firstName || !lastName || !email || !phone || !password) {
       setError('Заполните все поля');
       return;
     }
@@ -264,12 +273,19 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
       setError('ИНН и ОГРН должны быть числами');
       return;
     }
+    if (!/^\+?\d{10,15}$/.test(phone.replace(/\D/g, ''))) {
+      setError('Неверный формат телефона');
+      return;
+    }
 
     const body = {
-      name,
-      email,
+      orgName,
       inn: Number(inn),
       ogrn: Number(ogrn),
+      firstName,
+      lastName,
+      email,
+      phone,
       password,
     };
 
@@ -287,9 +303,9 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
         throw new Error(err?.message || 'Ошибка регистрации');
       }
 
-      const data: RegisterResponse = await response.json();
+      const data: AuthResponse = await response.json();
       if (!data.access_token) {
-        throw new Error('Не получен acces_token');
+        throw new Error('Не получен access_token');
       }
 
       onAuth(data.user, data.access_token);
@@ -309,17 +325,10 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
 
         <input
           type="text"
-          placeholder="Имя"
+          placeholder="Название организации"
           style={inputStyle}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          style={inputStyle}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          value={orgName}
+          onChange={(e) => setOrgName(e.target.value)}
         />
         <input
           type="text"
@@ -334,6 +343,34 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
           style={inputStyle}
           value={ogrn}
           onChange={(e) => setOgrn(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="Имя"
+          style={inputStyle}
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="Фамилия"
+          style={inputStyle}
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          style={inputStyle}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="tel"
+          placeholder="номер телефона"
+          style={inputStyle}
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
         />
         <input
           type="password"
@@ -362,12 +399,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
   );
 };
 
-// главный экран
-
-interface DashboardProps {
-  user: User;
-  onLogout: () => void;
-}
+// ===== Дашборд =====
 
 const DashboardPage: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const token = localStorage.getItem('access_token');
@@ -411,9 +443,19 @@ const DashboardPage: React.FC<DashboardProps> = ({ user, onLogout }) => {
             <strong>Телефон:</strong> {user.phone}
           </p>
         )}
-        {user.name && (
+        {user.orgName && (
           <p>
-            <strong>Имя:</strong> {user.name}
+            <strong>Организация:</strong> {user.orgName}
+          </p>
+        )}
+        {user.firstName && (
+          <p>
+            <strong>Имя:</strong> {user.firstName}
+          </p>
+        )}
+        {user.lastName && (
+          <p>
+            <strong>Фамилия:</strong> {user.lastName}
           </p>
         )}
         {user.inn && (
@@ -439,14 +481,14 @@ const DashboardPage: React.FC<DashboardProps> = ({ user, onLogout }) => {
         <h2>Токен</h2>
         <p>
           <strong>access_token:</strong>{' '}
-          {token ? token : 'Токен не найден в localStorage'}
+          {token ? `${token.substring(0, 20)}...` : 'Токен не найден в localStorage'}
         </p>
       </section>
     </div>
   );
 };
 
-// стили
+// ===== Стили =====
 
 const authWrapperStyle: React.CSSProperties = {
   minHeight: '100vh',
@@ -520,6 +562,7 @@ const linkButtonStyle: React.CSSProperties = {
   cursor: 'pointer',
   padding: 0,
   fontSize: 14,
+  textDecoration: 'underline',
 };
 
 const toggleButtonStyle: React.CSSProperties = {
@@ -529,6 +572,7 @@ const toggleButtonStyle: React.CSSProperties = {
   border: 'none',
   cursor: 'pointer',
   fontSize: 14,
+  fontWeight: 500,
 };
 
 export default App;

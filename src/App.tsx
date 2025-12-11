@@ -3,8 +3,21 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 
 interface User {
   id: string;
-  email: string;
+  email?: string;
+  phone?: string;
   name?: string;
+  inn?: number;
+  ogrn?: number;
+}
+
+interface LoginResponse {
+  access_token: string;
+  user?: User;
+}
+
+interface RegisterResponse {
+  access_token: string;
+  user?: User;
 }
 
 const App: React.FC = () => {
@@ -21,14 +34,17 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleLogin = (user: User) => {
-    localStorage.setItem('user', JSON.stringify(user));
-    setCurrentUser(user);
+  const handleAuthSuccess = (user: User | undefined, accessToken: string) => {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+      setCurrentUser(user);
+    }
+    localStorage.setItem('access_token', accessToken);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
     setCurrentUser(null);
   };
 
@@ -41,7 +57,7 @@ const App: React.FC = () => {
             currentUser ? (
               <Navigate to="/dashboard" />
             ) : (
-              <LoginPage onLogin={handleLogin} />
+              <LoginPage onAuth={handleAuthSuccess} />
             )
           }
         />
@@ -51,7 +67,7 @@ const App: React.FC = () => {
             currentUser ? (
               <Navigate to="/dashboard" />
             ) : (
-              <RegisterPage onRegister={handleLogin} />
+              <RegisterPage onAuth={handleAuthSuccess} />
             )
           }
         />
@@ -76,14 +92,16 @@ const App: React.FC = () => {
   );
 };
 
-// ЛОГИН 
+// логин
 
 interface LoginPageProps {
-  onLogin: (user: User) => void;
+  onAuth: (user: User | undefined, accessToken: string) => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
+  const [useEmail, setUseEmail] = useState(true);
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -93,17 +111,29 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     e.preventDefault();
     setError('');
 
-    if (!email || !password) {
-      setError('Заполните все поля');
+    if (useEmail && !email) {
+      setError('Введите email');
       return;
     }
+    if (!useEmail && !phone) {
+      setError('Введите телефон');
+      return;
+    }
+    if (!password) {
+      setError('Введите пароль');
+      return;
+    }
+
+    const body: any = { password };
+    if (useEmail) body.email = email;
+    else body.phone = phone;
 
     setLoading(true);
     try {
       const response = await fetch('https://localhost:7278/Auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(body),
         credentials: 'include',
       });
 
@@ -112,19 +142,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         throw new Error(err?.message || 'Ошибка входа');
       }
 
-      const data = await response.json();
-      // Если твой .NET возвращает другой формат — поправь тут
-      const user: User = {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.name,
-      };
-
-      onLogin(user);
-      if (data.token) {
-        localStorage.setItem('token', data.token);
+      const data: LoginResponse = await response.json();
+      if (!data.access_token) {
+        throw new Error('Не получен access_token');
       }
 
+      onAuth(data.user, data.access_token);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Ошибка сети');
@@ -138,13 +161,50 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       <form onSubmit={handleSubmit} style={authFormStyle}>
         <h2 style={titleStyle}>Вход</h2>
         {error && <div style={errorStyle}>{error}</div>}
-        <input
-          type="email"
-          placeholder="Email"
-          style={inputStyle}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <button
+            type="button"
+            style={{
+              ...toggleButtonStyle,
+              background: useEmail ? '#2563eb' : '#e5e7eb',
+              color: useEmail ? '#fff' : '#111827',
+            }}
+            onClick={() => setUseEmail(true)}
+          >
+            Email
+          </button>
+          <button
+            type="button"
+            style={{
+              ...toggleButtonStyle,
+              background: !useEmail ? '#2563eb' : '#e5e7eb',
+              color: !useEmail ? '#fff' : '#111827',
+            }}
+            onClick={() => setUseEmail(false)}
+          >
+            Телефон
+          </button>
+        </div>
+
+        {useEmail ? (
+          <input
+            type="email"
+            placeholder="Email"
+            style={inputStyle}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        ) : (
+          <input
+            type="tel"
+            placeholder="Телефон"
+            style={inputStyle}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        )}
+
         <input
           type="password"
           placeholder="Пароль"
@@ -152,9 +212,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+
         <button type="submit" style={primaryButtonStyle} disabled={loading}>
           {loading ? 'Вход...' : 'Войти'}
         </button>
+
         <p style={linkTextStyle}>
           Нет аккаунта?{' '}
           <button
@@ -170,15 +232,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   );
 };
 
-//  РЕГИСТРАЦИЯ 
+// регистрация
 
 interface RegisterPageProps {
-  onRegister: (user: User) => void;
+  onAuth: (user: User | undefined, accessToken: string) => void;
 }
 
-const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
+const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [inn, setInn] = useState('');
+  const [ogrn, setOgrn] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -188,7 +252,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
     e.preventDefault();
     setError('');
 
-    if (!name || !email || !password) {
+    if (!name || !email || !inn || !ogrn || !password) {
       setError('Заполните все поля');
       return;
     }
@@ -196,13 +260,25 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       setError('Пароль минимум 6 символов');
       return;
     }
+    if (isNaN(Number(inn)) || isNaN(Number(ogrn))) {
+      setError('ИНН и ОГРН должны быть числами');
+      return;
+    }
+
+    const body = {
+      name,
+      email,
+      inn: Number(inn),
+      ogrn: Number(ogrn),
+      password,
+    };
 
     setLoading(true);
     try {
       const response = await fetch('https://localhost:7278/Auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify(body),
         credentials: 'include',
       });
 
@@ -211,18 +287,12 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
         throw new Error(err?.message || 'Ошибка регистрации');
       }
 
-      const data = await response.json();
-      const user: User = {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.name,
-      };
-
-      onRegister(user);
-      if (data.token) {
-        localStorage.setItem('token', data.token);
+      const data: RegisterResponse = await response.json();
+      if (!data.access_token) {
+        throw new Error('Не получен access_token');
       }
 
+      onAuth(data.user, data.access_token);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Ошибка сети');
@@ -236,6 +306,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       <form onSubmit={handleSubmit} style={authFormStyle}>
         <h2 style={titleStyle}>Регистрация</h2>
         {error && <div style={errorStyle}>{error}</div>}
+
         <input
           type="text"
           placeholder="Имя"
@@ -251,15 +322,31 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
           onChange={(e) => setEmail(e.target.value)}
         />
         <input
+          type="text"
+          placeholder="ИНН (число)"
+          style={inputStyle}
+          value={inn}
+          onChange={(e) => setInn(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="ОГРН (число)"
+          style={inputStyle}
+          value={ogrn}
+          onChange={(e) => setOgrn(e.target.value)}
+        />
+        <input
           type="password"
           placeholder="Пароль"
           style={inputStyle}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+
         <button type="submit" style={primaryButtonStyle} disabled={loading}>
           {loading ? 'Регистрация...' : 'Зарегистрироваться'}
         </button>
+
         <p style={linkTextStyle}>
           Уже есть аккаунт?{' '}
           <button
@@ -275,7 +362,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
   );
 };
 
-// ГЛАВНЫЙ ЭКРАН 
+// главный экран
 
 interface DashboardProps {
   user: User;
@@ -283,6 +370,8 @@ interface DashboardProps {
 }
 
 const DashboardPage: React.FC<DashboardProps> = ({ user, onLogout }) => {
+  const token = localStorage.getItem('access_token');
+
   return (
     <div style={{ maxWidth: 960, margin: '40px auto', padding: '0 16px' }}>
       <header
@@ -305,24 +394,59 @@ const DashboardPage: React.FC<DashboardProps> = ({ user, onLogout }) => {
           borderRadius: 12,
           padding: 24,
           boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+          marginBottom: 16,
         }}
       >
         <h2>Профиль</h2>
         <p>
           <strong>ID:</strong> {user.id}
         </p>
+        {user.email && (
+          <p>
+            <strong>Email:</strong> {user.email}
+          </p>
+        )}
+        {user.phone && (
+          <p>
+            <strong>Телефон:</strong> {user.phone}
+          </p>
+        )}
+        {user.name && (
+          <p>
+            <strong>Имя:</strong> {user.name}
+          </p>
+        )}
+        {user.inn && (
+          <p>
+            <strong>ИНН:</strong> {user.inn}
+          </p>
+        )}
+        {user.ogrn && (
+          <p>
+            <strong>ОГРН:</strong> {user.ogrn}
+          </p>
+        )}
+      </section>
+
+      <section
+        style={{
+          background: '#fff',
+          borderRadius: 12,
+          padding: 24,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+        }}
+      >
+        <h2>Токен</h2>
         <p>
-          <strong>Email:</strong> {user.email}
-        </p>
-        <p>
-          <strong>Имя:</strong> {user.name || 'Не указано'}
+          <strong>access_token:</strong>{' '}
+          {token ? token : 'Токен не найден в localStorage'}
         </p>
       </section>
     </div>
   );
 };
 
-// -------- СТИЛИ --------
+// стили
 
 const authWrapperStyle: React.CSSProperties = {
   minHeight: '100vh',
@@ -334,7 +458,7 @@ const authWrapperStyle: React.CSSProperties = {
 
 const authFormStyle: React.CSSProperties = {
   width: '100%',
-  maxWidth: 400,
+  maxWidth: 420,
   background: '#fff',
   borderRadius: 12,
   padding: 24,
@@ -395,6 +519,15 @@ const linkButtonStyle: React.CSSProperties = {
   color: '#2563eb',
   cursor: 'pointer',
   padding: 0,
+  fontSize: 14,
+};
+
+const toggleButtonStyle: React.CSSProperties = {
+  flex: 1,
+  padding: '6px 8px',
+  borderRadius: 999,
+  border: 'none',
+  cursor: 'pointer',
   fontSize: 14,
 };
 

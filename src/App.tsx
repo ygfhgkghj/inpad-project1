@@ -10,7 +10,6 @@ interface User {
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // загрузка пользователя из localStorage при старте
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
@@ -29,6 +28,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     setCurrentUser(null);
   };
 
@@ -76,7 +76,7 @@ const App: React.FC = () => {
   );
 };
 
-// Страница логина 
+// ЛОГИН 
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
@@ -86,9 +86,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -97,10 +98,39 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       return;
     }
 
-    // тут вместо проверки по localStorage надо запрос к .NET API [web:48][web:54]
-    const fakeUser: User = { id: '1', email, name: 'Demo User' };
-    onLogin(fakeUser);
-    navigate('/dashboard');
+    setLoading(true);
+    try {
+      const response = await fetch('https://localhost:7278/Auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.message || 'Ошибка входа');
+      }
+
+      const data = await response.json();
+      // Если твой .NET возвращает другой формат — поправь тут
+      const user: User = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+      };
+
+      onLogin(user);
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Ошибка сети');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -122,8 +152,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <button type="submit" style={primaryButtonStyle}>
-          Войти
+        <button type="submit" style={primaryButtonStyle} disabled={loading}>
+          {loading ? 'Вход...' : 'Войти'}
         </button>
         <p style={linkTextStyle}>
           Нет аккаунта?{' '}
@@ -140,7 +170,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   );
 };
 
-//  Страница регистрации 
+//  РЕГИСТРАЦИЯ 
 
 interface RegisterPageProps {
   onRegister: (user: User) => void;
@@ -151,9 +181,10 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -166,10 +197,38 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       return;
     }
 
-    // вместо этого  POST /register на .NET API [web:48][web:54]
-    const fakeUser: User = { id: '2', email, name };
-    onRegister(fakeUser);
-    navigate('/dashboard');
+    setLoading(true);
+    try {
+      const response = await fetch('https://localhost:7278/Auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.message || 'Ошибка регистрации');
+      }
+
+      const data = await response.json();
+      const user: User = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+      };
+
+      onRegister(user);
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Ошибка сети');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -198,8 +257,8 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <button type="submit" style={primaryButtonStyle}>
-          Зарегистрироваться
+        <button type="submit" style={primaryButtonStyle} disabled={loading}>
+          {loading ? 'Регистрация...' : 'Зарегистрироваться'}
         </button>
         <p style={linkTextStyle}>
           Уже есть аккаунт?{' '}
@@ -216,7 +275,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
   );
 };
 
-// Главный экран (dashboard) 
+// ГЛАВНЫЙ ЭКРАН 
 
 interface DashboardProps {
   user: User;
@@ -263,7 +322,7 @@ const DashboardPage: React.FC<DashboardProps> = ({ user, onLogout }) => {
   );
 };
 
-// Стили 
+// -------- СТИЛИ --------
 
 const authWrapperStyle: React.CSSProperties = {
   minHeight: '100vh',

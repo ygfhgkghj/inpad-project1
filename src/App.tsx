@@ -56,11 +56,21 @@ const App: React.FC = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('access_token');
     setCurrentUser(null);
+    window.location.href = '/login';
   }, []);
 
   return (
     <BrowserRouter>
       <Routes>
+        {/* Лендинг */}
+        <Route
+          path="/"
+          element={
+            currentUser ? <Navigate to="/dashboard" /> : <LandingPage />
+          }
+        />
+
+        {/* Логин */}
         <Route
           path="/login"
           element={
@@ -71,6 +81,8 @@ const App: React.FC = () => {
             )
           }
         />
+
+        {/* Регистрация */}
         <Route
           path="/register"
           element={
@@ -81,6 +93,8 @@ const App: React.FC = () => {
             )
           }
         />
+
+        {/* Дашборд */}
         <Route
           path="/dashboard"
           element={
@@ -91,8 +105,10 @@ const App: React.FC = () => {
             )
           }
         />
+
+        {/* Любой другой путь */}
         <Route
-          path="/"
+          path="*"
           element={
             currentUser ? <Navigate to="/dashboard" /> : <Navigate to="/login" />
           }
@@ -102,13 +118,67 @@ const App: React.FC = () => {
   );
 };
 
-// ===== Логин =====
+
+const LandingPage: React.FC = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div style={landingRoot}>
+      {/* Верхняя полоса */}
+      <header style={topBarLanding}>
+        <button
+          style={loginButtonLanding}
+          onClick={() => navigate('/login')}
+        >
+          Войти
+        </button>
+
+        {/* Линия-разделитель */}
+        <div style={dividerLineLanding} />
+
+        <button
+          style={registerButtonLanding}
+          onClick={() => navigate('/register')}
+        >
+          Регистрация
+        </button>
+      </header>
+
+      <main>
+        {/* Блок с заголовком */}
+        <section style={heroBlock}>
+          <h1 style={heroTitle}>
+            Создавайте пояснительные записки<br />
+            для проектной документации быстро и без ошибок
+          </h1>
+
+          <ul style={heroList}>
+            <li>Соответствует требованиям Минстроя</li>
+            <li>Проверка на ошибки перед выгрузкой</li>
+            <li>Использование в экспертизах и госзадаче</li>
+          </ul>
+
+          <p style={heroSubText}>
+            Для проектных организаций и экспертных центров
+          </p>
+
+          <button
+            style={startButton}
+            onClick={() => navigate('/register')}
+          >
+            Начать работу
+          </button>
+        </section>
+      </main>
+    </div>
+  );
+};
+
 
 const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
-  const [useEmail, setUseEmail] = useState(true);
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [identifier, setIdentifier] = useState(''); // email или телефон
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -117,26 +187,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
     e.preventDefault();
     setError('');
 
-    if (useEmail && !email) {
-      setError('Введите email');
-      return;
-    }
-    if (!useEmail && !phone) {
-      setError('Введите телефон');
-      return;
-    }
-    if (!password) {
-      setError('Введите пароль');
-      return;
-    }
-    if (!useEmail && phone && !/^\+?\d{10,15}$/.test(phone.replace(/\D/g, ''))) {
-      setError('Неверный формат телефона');
+    if (!identifier || !password) {
+      setError('Заполните все поля');
       return;
     }
 
     const body: any = { password };
-    if (useEmail) body.email = email;
-    else body.phone = phone;
+    if (identifier.includes('@')) body.email = identifier;
+    else body.phone = identifier;
 
     setLoading(true);
     try {
@@ -167,92 +225,83 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
   };
 
   return (
-    <div style={authWrapperStyle}>
-      <form onSubmit={handleSubmit} style={authFormStyle}>
-        <h2 style={titleStyle}>Вход</h2>
-        {error && <div style={errorStyle}>{error}</div>}
+    <div style={pageRoot}>
+      {/* верхняя синяя полоса */}
+      <div style={topBarSimple} />
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <button
-            type="button"
-            style={{
-              ...toggleButtonStyle,
-              background: useEmail ? '#2563eb' : '#e5e7eb',
-              color: useEmail ? '#fff' : '#111827',
-            }}
-            onClick={() => setUseEmail(true)}
-          >
-            Email
+      <div style={formOuter}>
+        <h2 style={pageTitle}>Вход в систему</h2>
+
+        <form onSubmit={handleSubmit} style={segmentForm}>
+          {error && <div style={errorStyle}>{error}</div>}
+
+          <div style={segmentInnerLogin}>
+            <div style={lineInputWrapper}>
+              <input
+                type="text"
+                placeholder="Email или телефон"
+                style={lineInput}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+              />
+            </div>
+
+            <div style={lineInputWrapper}>
+              <input
+                type="password"
+                placeholder="Пароль"
+                style={lineInput}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+
+            <label style={checkRow}>
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              <span style={{ marginLeft: 8 }}>Запомнить меня</span>
+            </label>
+
+            <button type="submit" style={outlinePrimaryButton} disabled={loading}>
+              {loading ? 'Вход...' : 'Войти'}
+            </button>
+          </div>
+        </form>
+
+        <div style={bottomLinks}>
+          <button type="button" style={linkButtonStyle} onClick={() => {}}>
+            Забыли пароль?
           </button>
-          <button
-            type="button"
-            style={{
-              ...toggleButtonStyle,
-              background: !useEmail ? '#2563eb' : '#e5e7eb',
-              color: !useEmail ? '#fff' : '#111827',
-            }}
-            onClick={() => setUseEmail(false)}
-          >
-            Телефон
-          </button>
+          <div style={{ marginTop: 8 }}>
+            Еще нет аккаунта?{' '}
+            <button
+              type="button"
+              style={linkButtonStyle}
+              onClick={() => navigate('/register')}
+            >
+              Зарегистрироваться
+            </button>
+          </div>
         </div>
-
-        {useEmail ? (
-          <input
-            type="email"
-            placeholder="Email"
-            style={inputStyle}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        ) : (
-          <input
-            type="tel"
-            placeholder="номер телефона"
-            style={inputStyle}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-        )}
-
-        <input
-          type="password"
-          placeholder="Пароль"
-          style={inputStyle}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <button type="submit" style={primaryButtonStyle} disabled={loading}>
-          {loading ? 'Вход...' : 'Войти'}
-        </button>
-
-        <p style={linkTextStyle}>
-          Нет аккаунта?{' '}
-          <button
-            type="button"
-            style={linkButtonStyle}
-            onClick={() => navigate('/register')}
-          >
-            Регистрация
-          </button>
-        </p>
-      </form>
+      </div>
     </div>
   );
 };
 
-// ===== Регистрация  =====
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
   const [orgName, setOrgName] = useState('');
   const [inn, setInn] = useState('');
   const [ogrn, setOgrn] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [fio, setFio] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
+  const [agree, setAgree] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -261,22 +310,26 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
     e.preventDefault();
     setError('');
 
-    if (!orgName || !inn || !ogrn || !firstName || !lastName || !email || !phone || !password) {
+    if (!orgName || !inn || !ogrn || !fio || !email || !phone || !password || !password2) {
       setError('Заполните все поля');
       return;
     }
-    if (password.length < 6) {
-      setError('Пароль минимум 6 символов');
+    if (password !== password2) {
+      setError('Пароли не совпадают');
+      return;
+    }
+    if (!agree) {
+      setError('Нужно согласиться с условиями использования');
       return;
     }
     if (isNaN(Number(inn)) || isNaN(Number(ogrn))) {
       setError('ИНН и ОГРН должны быть числами');
       return;
     }
-    if (!/^\+?\d{10,15}$/.test(phone.replace(/\D/g, ''))) {
-      setError('Неверный формат телефона');
-      return;
-    }
+
+    const parts = fio.trim().split(/\s+/);
+    const firstName = parts[1] ? parts[1] : parts[0];
+    const lastName = parts[0];
 
     const body = {
       orgName,
@@ -317,230 +370,436 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
     }
   };
 
+  const navigateToLogin = () => navigate('/login');
+
   return (
-    <div style={authWrapperStyle}>
-      <form onSubmit={handleSubmit} style={authFormStyle}>
-        <h2 style={titleStyle}>Регистрация</h2>
-        {error && <div style={errorStyle}>{error}</div>}
-
-        <input
-          type="text"
-          placeholder="Название организации"
-          style={inputStyle}
-          value={orgName}
-          onChange={(e) => setOrgName(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="ИНН (число)"
-          style={inputStyle}
-          value={inn}
-          onChange={(e) => setInn(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="ОГРН (число)"
-          style={inputStyle}
-          value={ogrn}
-          onChange={(e) => setOgrn(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Имя"
-          style={inputStyle}
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Фамилия"
-          style={inputStyle}
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          style={inputStyle}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="tel"
-          placeholder="номер телефона"
-          style={inputStyle}
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Пароль"
-          style={inputStyle}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <button type="submit" style={primaryButtonStyle} disabled={loading}>
-          {loading ? 'Регистрация...' : 'Зарегистрироваться'}
-        </button>
-
-        <p style={linkTextStyle}>
-          Уже есть аккаунт?{' '}
-          <button
-            type="button"
-            style={linkButtonStyle}
-            onClick={() => navigate('/login')}
-          >
+    <div style={pageRoot}>
+      {/* верхняя синяя полоса с текстом справа */}
+      <div style={topBarWithText}>
+        <div style={topBarRight}>
+          <span style={{ color: '#FFFFFF', marginRight: 8 }}>У Вас уже есть аккаунт?</span>
+          <button style={topBarLoginBtn} onClick={navigateToLogin}>
             Войти
           </button>
-        </p>
-      </form>
+        </div>
+      </div>
+
+      <div style={formOuter}>
+        <h2 style={pageTitle}>Регистрация организации</h2>
+
+        <form onSubmit={handleSubmit} style={segmentForm}>
+          {error && <div style={errorStyle}>{error}</div>}
+
+          {/* Блок "Данные организации" */}
+          <div style={segmentBlock}>
+            <div style={segmentHeader}>Данные организации:</div>
+            <div style={segmentInner}>
+              <div style={lineInputWrapper}>
+                <input
+                  type="text"
+                  placeholder="Название организации"
+                  style={lineInput}
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
+                />
+              </div>
+              <div style={lineInputWrapper}>
+                <input
+                  type="text"
+                  placeholder="ИНН"
+                  style={lineInput}
+                  value={inn}
+                  onChange={(e) => setInn(e.target.value)}
+                />
+              </div>
+              <div style={lineInputWrapper}>
+                <input
+                  type="text"
+                  placeholder="ОГРН"
+                  style={lineInput}
+                  value={ogrn}
+                  onChange={(e) => setOgrn(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Блок "Контактное лицо" */}
+          <div style={{ ...segmentBlock, marginTop: 24 }}>
+            <div style={segmentHeader}>Контактное лицо:</div>
+            <div style={segmentInner}>
+              <div style={lineInputWrapper}>
+                <input
+                  type="text"
+                  placeholder="ФИО"
+                  style={lineInput}
+                  value={fio}
+                  onChange={(e) => setFio(e.target.value)}
+                />
+              </div>
+              <div style={lineInputWrapper}>
+                <input
+                  type="email"
+                  placeholder="Email"
+                  style={lineInput}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div style={lineInputWrapper}>
+                <input
+                  type="tel"
+                  placeholder="Телефон"
+                  style={lineInput}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+              <div style={lineInputWrapper}>
+                <input
+                  type="password"
+                  placeholder="Пароль"
+                  style={lineInput}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <div style={lineInputWrapper}>
+                <input
+                  type="password"
+                  placeholder="Подтверждение пароля"
+                  style={lineInput}
+                  value={password2}
+                  onChange={(e) => setPassword2(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <label style={checkRow}>
+            <input
+              type="checkbox"
+              checked={agree}
+              onChange={(e) => setAgree(e.target.checked)}
+            />
+            <span style={{ marginLeft: 8 }}>
+              Согласен с{' '}
+              <button type="button" style={linkButtonStyle}>
+                условиями использования
+              </button>
+            </span>
+          </label>
+
+          <button type="submit" style={outlinePrimaryButton} disabled={loading}>
+            {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+          </button>
+
+          <div style={{ marginTop: 12 }}>
+            У Вас уже есть аккаунт?{' '}
+            <button type="button" style={linkButtonStyle} onClick={navigateToLogin}>
+              Войти
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
 
-// ===== Дашборд =====
 
 const DashboardPage: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const token = localStorage.getItem('access_token');
 
   return (
     <div style={{ maxWidth: 960, margin: '40px auto', padding: '0 16px' }}>
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-        }}
-      >
-        <h1>Главный экран</h1>
-        <button style={dangerButtonStyle} onClick={onLogout}>
-          Выйти
-        </button>
-      </header>
+    <header
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+      }}
+    >
+      <h1>Главный экран</h1>
+      <button style={dangerButtonStyle} onClick={onLogout}>
+        Выйти
+      </button>
+    </header>
 
-      <section
-        style={{
-          background: '#fff',
-          borderRadius: 12,
-          padding: 24,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-          marginBottom: 16,
-        }}
-      >
-        <h2>Профиль</h2>
+    <section
+      style={{
+        background: '#fff',
+        borderRadius: 12,
+        padding: 24,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+        marginBottom: 16,
+      }}
+    >
+      <h2>Профиль</h2>
+      <p>
+        <strong>ID:</strong> {user.id}
+      </p>
+      {user.email && (
         <p>
-          <strong>ID:</strong> {user.id}
+          <strong>Email:</strong> {user.email}
         </p>
-        {user.email && (
-          <p>
-            <strong>Email:</strong> {user.email}
-          </p>
-        )}
-        {user.phone && (
-          <p>
-            <strong>Телефон:</strong> {user.phone}
-          </p>
-        )}
-        {user.orgName && (
-          <p>
-            <strong>Организация:</strong> {user.orgName}
-          </p>
-        )}
-        {user.firstName && (
-          <p>
-            <strong>Имя:</strong> {user.firstName}
-          </p>
-        )}
-        {user.lastName && (
-          <p>
-            <strong>Фамилия:</strong> {user.lastName}
-          </p>
-        )}
-        {user.inn && (
-          <p>
-            <strong>ИНН:</strong> {user.inn}
-          </p>
-        )}
-        {user.ogrn && (
-          <p>
-            <strong>ОГРН:</strong> {user.ogrn}
-          </p>
-        )}
-      </section>
+      )}
+      {user.phone && (
+        <p>
+          <strong>Телефон:</strong> {user.phone}
+        </p>
+      )}
+      {user.orgName && (
+        <p>
+          <strong>Организация:</strong> {user.orgName}
+        </p>
+      )}
+      {user.firstName && (
+        <p>
+          <strong>Имя:</strong> {user.firstName}
+        </p>
+      )}
+      {user.lastName && (
+        <p>
+          <strong>Фамилия:</strong> {user.lastName}
+        </p>
+      )}
+      {user.inn && (
+        <p>
+          <strong>ИНН:</strong> {user.inn}
+        </p>
+      )}
+      {user.ogrn && (
+        <p>
+          <strong>ОГРН:</strong> {user.ogrn}
+        </p>
+      )}
+    </section>
 
-      <section
-        style={{
-          background: '#fff',
-          borderRadius: 12,
-          padding: 24,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-        }}
-      >
-        <h2>Токен</h2>
-        <p>
-          <strong>access_token:</strong>{' '}
-          {token ? `${token.substring(0, 20)}...` : 'Токен не найден в localStorage'}
-        </p>
-      </section>
-    </div>
+    <section
+      style={{
+        background: '#fff',
+        borderRadius: 12,
+        padding: 24,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+      }}
+    >
+      <h2>Токен</h2>
+      <p>
+        <strong>access_token:</strong>{' '}
+        {token ? `${token.substring(0, 20)}...` : 'Токен не найден в localStorage'}
+      </p>
+    </section>
+  </div>
   );
 };
 
-// ===== Стили =====
 
-const authWrapperStyle: React.CSSProperties = {
+const landingRoot: React.CSSProperties = {
   minHeight: '100vh',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 16,
-};
-
-const authFormStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: 420,
-  background: '#fff',
-  borderRadius: 12,
-  padding: 24,
-  boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+  background: '#FFFFFF',
   display: 'flex',
   flexDirection: 'column',
-  gap: 12,
+  alignItems: 'stretch',
 };
 
-const titleStyle: React.CSSProperties = {
-  textAlign: 'center',
-  marginBottom: 8,
+const topBarLanding: React.CSSProperties = {
+  width: '100%',
+  height: 64,
+  background: '#020557',
+  display: 'flex',
+  alignItems: 'center',
+  position: 'relative',
+  margin: '0 auto',
 };
 
-const inputStyle: React.CSSProperties = {
-  padding: '10px 12px',
-  borderRadius: 8,
-  border: '1px solid #d1d5db',
+const loginButtonLanding: React.CSSProperties = {
+  position: 'absolute',
+  left: 930,
+  top: 9,
+  width: 152,
+  height: 46,
+  background: '#FFFbfb',
+  color: '#020557',
+  border: '1px solid #020557',
+  borderRadius: 0,
+  cursor: 'pointer',
+  fontSize: 16,
+  fontWeight: 500,
+};
+
+const dividerLineLanding: React.CSSProperties = {
+  position: 'absolute',
+  left: 1100,
+  top: 9,
+  width: 1,
+  height: 46,
+  background: '#FFFFFF',
+};
+
+const registerButtonLanding: React.CSSProperties = {
+  position: 'absolute',
+  left: 1118,
+  top: 9,
+  width: 275,
+  height: 46,
+  background: '#C0BFBF',
+  color: '#020557',
+  border: 'none',
+  borderRadius: 0,
+  cursor: 'pointer',
+  fontSize: 16,
+  fontWeight: 500,
+};
+
+const heroBlock: React.CSSProperties = {
+  marginLeft: 105,
+  marginTop: 314 - 64,
+  maxWidth: 700,
+};
+
+const heroTitle: React.CSSProperties = {
+  fontSize: 32,
+  lineHeight: 1.25,
+  fontWeight: 700,
+  color: '#000000',
+  marginBottom: 24,
+};
+
+const heroList: React.CSSProperties = {
+  marginLeft: 16,
+  marginBottom: 12,
+  lineHeight: 1.4,
+} as React.CSSProperties;
+
+const heroSubText: React.CSSProperties = {
+  marginTop: 8,
+  marginBottom: 24,
   fontSize: 14,
 };
 
-const primaryButtonStyle: React.CSSProperties = {
-  padding: '10px 12px',
-  borderRadius: 8,
+const startButton: React.CSSProperties = {
+  marginTop: 16,
+  width: 152,
+  height: 46,
+  background: '#020557',
+  color: '#FFFFFF',
   border: 'none',
-  background: '#2563eb',
-  color: '#fff',
-  fontWeight: 600,
+  cursor: 'pointer',
+  fontSize: 16,
+  fontWeight: 500,
+};
+
+
+const pageRoot: React.CSSProperties = {
+  minHeight: '100vh',
+  background: '#FFFFFF',
+};
+
+const topBarSimple: React.CSSProperties = {
+  width: '100%',
+  height: 64,
+  background: '#020557',
+};
+
+const topBarWithText: React.CSSProperties = {
+  width: '100%',
+  height: 64,
+  background: '#020557',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+};
+
+const topBarRight: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  marginRight: 40,
+};
+
+const topBarLoginBtn: React.CSSProperties = {
+  padding: '6px 16px',
+  border: '1px solid #FFFFFF',
+  background: 'transparent',
+  color: '#FFFFFF',
   cursor: 'pointer',
 };
 
-const dangerButtonStyle: React.CSSProperties = {
-  padding: '8px 12px',
-  borderRadius: 8,
-  border: 'none',
-  background: '#dc2626',
-  color: '#fff',
-  fontWeight: 600,
-  cursor: 'pointer',
+const formOuter: React.CSSProperties = {
+  maxWidth: 860,
+  margin: '64px auto',
+  background: '#E6E6F2',
+  padding: 40,
 };
+
+const pageTitle: React.CSSProperties = {
+  textAlign: 'center',
+  fontSize: 24,
+  fontWeight: 700,
+  marginBottom: 24,
+  color: '#020557',
+};
+
+const segmentForm: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+};
+
+const segmentBlock: React.CSSProperties = {
+  background: '#EDEDF5',
+  padding: 16,
+};
+
+const segmentHeader: React.CSSProperties = {
+  fontWeight: 600,
+  marginBottom: 8,
+};
+
+const segmentInner: React.CSSProperties = {
+  background: '#EDEDF5',
+  padding: 16,
+};
+
+const segmentInnerLogin: React.CSSProperties = {
+  background: '#EDEDF5',
+  padding: 24,
+};
+
+const lineInputWrapper: React.CSSProperties = {
+  marginBottom: 8,
+};
+
+const lineInput: React.CSSProperties = {
+  width: '100%',
+  border: 'none',
+  borderBottom: '1px solid #4B4B4B',
+  background: 'transparent',
+  padding: '4px 0',
+  outline: 'none',
+};
+
+const checkRow: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  marginTop: 8,
+};
+
+const outlinePrimaryButton: React.CSSProperties = {
+  marginTop: 16,
+  padding: '8px 24px',
+  borderRadius: 0,
+  border: '1px solid #020557',
+  background: '#FFFFFF',
+  color: '#020557',
+  cursor: 'pointer',
+  alignSelf: 'flex-start',
+};
+
+const bottomLinks: React.CSSProperties = {
+  marginTop: 24,
+};
+
 
 const errorStyle: React.CSSProperties = {
   background: '#fee2e2',
@@ -548,11 +807,6 @@ const errorStyle: React.CSSProperties = {
   padding: '8px 10px',
   borderRadius: 8,
   fontSize: 13,
-};
-
-const linkTextStyle: React.CSSProperties = {
-  fontSize: 14,
-  textAlign: 'center',
 };
 
 const linkButtonStyle: React.CSSProperties = {
@@ -565,14 +819,14 @@ const linkButtonStyle: React.CSSProperties = {
   textDecoration: 'underline',
 };
 
-const toggleButtonStyle: React.CSSProperties = {
-  flex: 1,
-  padding: '6px 8px',
-  borderRadius: 999,
+const dangerButtonStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: 8,
   border: 'none',
+  background: '#dc2626',
+  color: '#fff',
+  fontWeight: 600,
   cursor: 'pointer',
-  fontSize: 14,
-  fontWeight: 500,
 };
 
 export default App;

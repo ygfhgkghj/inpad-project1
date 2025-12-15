@@ -62,7 +62,6 @@ const App: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Лендинг */}
         <Route
           path="/"
           element={
@@ -70,7 +69,6 @@ const App: React.FC = () => {
           }
         />
 
-        {/* Логин */}
         <Route
           path="/login"
           element={
@@ -82,7 +80,6 @@ const App: React.FC = () => {
           }
         />
 
-        {/* Регистрация */}
         <Route
           path="/register"
           element={
@@ -94,7 +91,6 @@ const App: React.FC = () => {
           }
         />
 
-        {/* Дашборд */}
         <Route
           path="/dashboard"
           element={
@@ -106,7 +102,6 @@ const App: React.FC = () => {
           }
         />
 
-        {/* Любой другой путь */}
         <Route
           path="*"
           element={
@@ -118,13 +113,13 @@ const App: React.FC = () => {
   );
 };
 
+// ЛЕНДИНГ 
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
     <div style={landingRoot}>
-      {/* Верхняя полоса */}
       <header style={topBarLanding}>
         <button
           style={loginButtonLanding}
@@ -133,7 +128,6 @@ const LandingPage: React.FC = () => {
           Войти
         </button>
 
-        {/* Линия-разделитель */}
         <div style={dividerLineLanding} />
 
         <button
@@ -145,7 +139,6 @@ const LandingPage: React.FC = () => {
       </header>
 
       <main>
-        {/* Блок с заголовком */}
         <section style={heroBlock}>
           <h1 style={heroTitle}>
             Создавайте пояснительные записки<br />
@@ -174,9 +167,10 @@ const LandingPage: React.FC = () => {
   );
 };
 
+// логин
 
 const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
-  const [identifier, setIdentifier] = useState(''); // email или телефон
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
@@ -216,7 +210,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
       }
 
       onAuth(data.user, data.access_token);
-      navigate('/dashboard');
+
+      
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 0);
     } catch (err: any) {
       setError(err.message || 'Ошибка сети');
     } finally {
@@ -226,7 +224,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
 
   return (
     <div style={pageRoot}>
-      {/* верхняя синяя полоса */}
       <div style={topBarSimple} />
 
       <div style={formOuter}>
@@ -291,6 +288,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onAuth }) => {
   );
 };
 
+// ===== РЕГИСТРАЦИЯ =====
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
   const [orgName, setOrgName] = useState('');
@@ -362,7 +360,9 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
       }
 
       onAuth(data.user, data.access_token);
-      navigate('/dashboard');
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 0);
     } catch (err: any) {
       setError(err.message || 'Ошибка сети');
     } finally {
@@ -374,7 +374,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
 
   return (
     <div style={pageRoot}>
-      {/* верхняя синяя полоса с текстом справа */}
       <div style={topBarWithText}>
         <div style={topBarRight}>
           <span style={{ color: '#FFFFFF', marginRight: 8 }}>У Вас уже есть аккаунт?</span>
@@ -390,7 +389,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
         <form onSubmit={handleSubmit} style={segmentForm}>
           {error && <div style={errorStyle}>{error}</div>}
 
-          {/* Блок "Данные организации" */}
           <div style={segmentBlock}>
             <div style={segmentHeader}>Данные организации:</div>
             <div style={segmentInner}>
@@ -424,7 +422,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
             </div>
           </div>
 
-          {/* Блок "Контактное лицо" */}
           <div style={{ ...segmentBlock, marginTop: 24 }}>
             <div style={segmentHeader}>Контактное лицо:</div>
             <div style={segmentInner}>
@@ -505,7 +502,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onAuth }) => {
     </div>
   );
 };
-
 
 const DashboardPage: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const token = localStorage.getItem('access_token');
